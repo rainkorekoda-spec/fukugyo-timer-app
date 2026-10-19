@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>副業活動時間管理アプリ</title>
+<style>
+    body { font-family: sans-serif; padding: 20px; background: #f7f7f7; }
+    h1 { font-size: 22px; }
+    .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    button { padding: 10px 15px; border: none; background: #0078d4; color: white; border-radius: 5px; cursor: pointer; }
+    button:disabled { background: #aaa; }
+    select, input { padding: 10px; width: 100%; margin-top: 10px; }
+    .log-item { padding: 10px; border-bottom: 1px solid #ddd; }
+</style>
+</head>
+<body>
+
+<h1>副業活動時間管理アプリ</h1>
+
+<div class="card">
+    <h2>タイマー</h2>
+    <label>カテゴリを選択：</label>
+    <select id="category">
+        <option>朝活Zoom</option>
+        <option>チーム会</option>
+        <option>トレーニング</option>
+        <option>お客様フォロー</option>
+        <option>1日の振り返り</option>
+        <option>提案</option>
+    </select>
+
+    <button id="startBtn">開始</button>
+    <button id="stopBtn" disabled>停止</button>
+
+    <p id="timerDisplay">00:00:00</p>
+</div>
+
+<div class="card">
+    <h2>今日の記録</h2>
+    <div id="log"></div>
+</div>
+
+<div class="card">
+    <h2>月次レポート</h2>
+    <button onclick="generateReport()">レポート生成</button>
+    <div id="report"></div>
+</div>
+
+<script>
+let startTime = null;
+let timerInterval = null;
+let logs = JSON.parse(localStorage.getItem("logs") || "[]");
+
+function updateTimer() {
+    const now = new Date();
+    const diff = Math.floor((now - startTime) / 1000);
+    const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+    const s = String(diff % 60).padStart(2, "0");
+    document.getElementById("timerDisplay").innerText = `${h}:${m}:${s}`;
+}
+
+document.getElementById("startBtn").onclick = () => {
+    startTime = new Date();
+    timerInterval = setInterval(updateTimer, 1000);
+    document.getElementById("startBtn").disabled = true;
+    document.getElementById("stopBtn").disabled = false;
+};
+
+document.getElementById("stopBtn").onclick = () => {
+    clearInterval(timerInterval);
+    const endTime = new Date();
+    const diff = Math.floor((endTime - startTime) / 1000);
+
+    logs.push({
+        category: document.getElementById("category").value,
+        seconds: diff,
+        date: new Date().toISOString().split("T")[0]
+    });
+
+    localStorage.setItem("logs", JSON.stringify(logs));
+    renderLogs();
+
+    document.getElementById("startBtn").disabled = false;
+    document.getElementById("stopBtn").disabled = true;
+    document.getElementById("timerDisplay").innerText = "00:00:00";
+};
+
+function renderLogs() {
+    const logDiv = document.getElementById("log");
+    logDiv.innerHTML = "";
+    logs.forEach(l => {
+        const h = (l.seconds / 3600).toFixed(2);
+        logDiv.innerHTML += `<div class="log-item">${l.date}：${l.category}（${h}時間）</div>`;
+    });
+}
+
+function generateReport() {
+    const reportDiv = document.getElementById("report");
+    const summary = {};
+
+    logs.forEach(l => {
+        if (!summary[l.category]) summary[l.category] = 0;
+        summary[l.category] += l.seconds;
+    });
+
+    let html = "<h3>カテゴリ別の投資時間</h3>";
+    for (const cat in summary) {
+        html += `<p>${cat}： ${(summary[cat] / 3600).toFixed(2)} 時間</p>`;
+    }
+
+    html += "<h3>改善ポイント（AI案）</h3>";
+    html += "<p>・最も時間を使ったカテゴリを伸ばすと成果が出やすい傾向があります。</p>";
+    html += "<p>・時間が少ないカテゴリは翌月の優先順位を見直すとバランスが整います。</p>";
+
+    reportDiv.innerHTML = html;
+}
+
+renderLogs();
+</script>
+
+</body>
+</html>
